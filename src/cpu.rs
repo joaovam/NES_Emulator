@@ -101,7 +101,28 @@ impl CPU {
             self.program_counter += 1;
             let opcode = opcodes.get(&code).expect(&format!("{:x} was not recognized", code));
             match code {
-                //LDA
+
+                0x69 | 0x65 | 0x75 | 0x6D | 0x7D | 0x79 | 0x61 | 0x71 => self.adc(),
+
+                0x29 | 0x25 | 0x35 | 0x2D | 0x3D | 0x39 | 0x21 | 0x31 => self.and(&opcode.mode),
+                0x0a => self.asl_acc(),
+
+                0x06 | 0x16 | 0x0E | 0x1E => {self.asl(&opcode.mode);},
+
+                0x90 => self.branch(!self.status.contains(CpuFlags::CARRY)),
+                0xB0 => self.branch(self.status.contains(CpuFlags::CARRY)),
+                0xF0 => self.branch(self.status.contains(CpuFlags::ZERO)),
+
+                0x24 | 0x2c => self.bit(&opcode.mode),
+
+                0x30 => self.branch(self.status.contains(CpuFlags::NEGATIVE)),
+                0xD0 => self.branch(!self.status.contains(CpuFlags::ZERO)),
+                0x50 => self.branch(!self.status.contains(CpuFlags::OVERFLOW)),
+                0x70 => self.branch(self.status.contains(CpuFlags::OVERFLOW)),
+                0x18 => self.status.remove(CpuFlags::CARRY),
+
+
+
                 0xa9 | 0xa5 | 0xb5 | 0xad | 0xbd | 0xb9 | 0xa1 | 0xb1 => {
                     self.lda(&opcode.mode);
                 }
@@ -153,7 +174,54 @@ impl CPU {
         self.update_zeros_and_negative_flags(self.register_a);
     }
 
-    fn asl(&mut self, )
+    fn asl_acc(&mut self){
+        let mut  val = self.register_a;
+
+        if val >> 7 == 1 {
+            self.sec();
+        }else{
+            self.clc();
+        }
+        val = val << 1;
+        self.register_a = val;
+        self.update_zeros_and_negative_flags(self.register_a);
+        
+    }
+
+    fn asl(&mut self, mode: &AddressingMode) -> u8{
+        let addr = self.get_operand_addresses(mode);
+        let mut val = self.mem_read(addr);
+        if val >> 7 == 1 {
+            self.sec();
+        }else{
+            self.clc();
+        }
+        val = val << 1;
+        self.mem_write(addr, val);
+        self.update_zeros_and_negative_flags(val);
+        val
+
+    }
+
+    fn bit(&mut self, mode: &AddressingMode){
+        let addr = self.get_operand_addresses(mode);
+        let v = self.mem_read(addr);
+        let and = v & self.register_a;
+
+        if and == 0{
+            self.status.insert(CpuFlags::ZERO)
+        }else{
+            self.status.remove(CpuFlags::ZERO)
+        }
+
+        self.status.set(CpuFlags::OVERFLOW, v & 0b0100_0000 > 0);
+        self.status.set(CpuFlags::OVERFLOW, v & 0b1000_0000 > 0)
+
+    }
+
+    fn clc(&mut self){
+        self.status.remove(CpuFlags::CARRY);
+    }
 
     fn lda(&mut self, mode: &AddressingMode) {
         let addr = self.get_operand_addresses(mode);
@@ -224,6 +292,15 @@ impl CPU {
         let lo = self.mem_read(pos) as u16;
         let hi = self.mem_read(pos + 1) as u16;
         (hi << 8) | (lo as u16)
+    }
+
+    fn branch(&mut self, condition:bool){
+        if condition {
+            let jump = self.mem_read(self.program_counter) as i8;
+
+            let jump_addr = self.program_counter.wrapping_add(1).wrapping_add(jump as u16);
+            self.program_counter = jump_addr;
+        }
     }
 
     fn mem_write_u16(&mut self, pos: u16, data: u16) {
