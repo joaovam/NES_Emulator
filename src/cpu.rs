@@ -120,16 +120,23 @@ impl CPU {
                 0x50 => self.branch(!self.status.contains(CpuFlags::OVERFLOW)),
                 0x70 => self.branch(self.status.contains(CpuFlags::OVERFLOW)),
                 0x18 => self.status.remove(CpuFlags::CARRY),
+                0xD8 => self.status.remove(CpuFlags::DECIMAL_MODE),
+                0x58 => self.status.remove(CpuFlags::INTERRUPT_DISABLE),
+                0xB8 => self.status.remove(CpuFlags::OVERFLOW),
+                0xC9 | 0xC5 | 0xD5 | 0xCD | 0xDD | 0xD9 | 0xC1 | 0xD1 => self.compare(&opcode.mode, self.register_a),
 
+                0xE0 | 0xE4 | 0xEC => self.compare(&opcode.mode, self.register_x),
 
+                0xC0 | 0xC4 | 0xCC => self.compare(&opcode.mode, self.register_y),
+
+                0xC6 | 0xD6 | 0xCE | 0xDE => self.dec(&opcode.mode),
+
+                0xCA => self.dex(),
+                0x88 => self.dey(),
 
                 0xa9 | 0xa5 | 0xb5 | 0xad | 0xbd | 0xb9 | 0xa1 | 0xb1 => {
                     self.lda(&opcode.mode);
                 }
-
-                
-
-                
 
                 0xe8 => self.inx(),
 
@@ -221,6 +228,37 @@ impl CPU {
 
     fn clc(&mut self){
         self.status.remove(CpuFlags::CARRY);
+    }
+
+    fn compare(&mut self, mode: &AddressingMode, compare_with: u8){
+        let addr = self.get_operand_addresses(mode);
+        let val = self.mem_read(addr);
+
+        
+
+        if val <= compare_with{
+            self.status.insert(CpuFlags::CARRY);
+        }
+        self.update_zeros_and_negative_flags(val.wrapping_sub(compare_with));
+
+    }
+    fn dec(&mut self, mode: &AddressingMode){
+        let addr = self.get_operand_addresses(mode);
+        let mut val = self.mem_read(addr);
+
+        val = val.wrapping_sub(1);
+        self.update_zeros_and_negative_flags(val);
+        self.mem_write(addr, val);
+    }
+
+    fn dex(&mut self){
+        self.register_x = self.register_x.wrapping_sub(1);
+        self.update_zeros_and_negative_flags(self.register_x);
+    }
+
+    fn dey(&mut self){
+        self.register_y = self.register_y.wrapping_sub(1);
+        self.update_zeros_and_negative_flags(self.register_y);
     }
 
     fn lda(&mut self, mode: &AddressingMode) {
