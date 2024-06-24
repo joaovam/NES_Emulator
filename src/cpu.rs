@@ -197,6 +197,16 @@ impl CPU {
 
                 },
                 0x09 | 0x05 | 0x15 | 0x0d | 0x1d | 0x19 | 0x01 | 0x11 => self.ora(&opcode.mode),
+
+                0x48 => self.pha(),
+
+                0x08 => self.php(),
+
+                0x68 => self.pla(),
+                0x28 => self.plp(),
+
+
+
                 0x38 => self.sec(),
                 0xF8 => self.sed(),
                 0x78 => self.sei(),
@@ -376,6 +386,15 @@ impl CPU {
         self.register_a = self.stack_pop();
         self.update_zeros_and_negative_flags(self.register_a);
     }
+
+    fn plp(&mut self){
+        self.status = CpuFlags::from_bits_truncate(self.stack_pop());
+    }
+
+    fn rol_accumulator(&mut self){
+        
+    }
+    // TODO: adicionar instrucoes no switch
 
 
 
