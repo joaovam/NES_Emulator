@@ -1,5 +1,5 @@
 
-use std::collections::HashMap;
+use std::{collections::HashMap, result};
 
 use crate::opcodes;
 
@@ -57,6 +57,38 @@ pub enum AddressingMode {
     NoneAddressing,
 }
 
+trait Mem {
+    fn mem_read(&self, addr: u16) -> u8;
+
+    fn mem_write(&mut self, addr: u16, data: u8);
+
+    fn mem_read_u16(&self, pos: u16) -> u16 {
+        let lo = self.mem_read(pos) as u16;
+        let hi = self.mem_read(pos + 1) as u16;
+        (hi << 8) | (lo as u16)
+    }
+
+    fn mem_write_u16(&mut self, pos: u16, data: u16) {
+        let hi = (data >> 8) as u8;
+        let lo = (data & 0xff) as u8;
+        self.mem_write(pos, lo);
+        self.mem_write(pos + 1, hi);
+    }
+}
+
+impl Mem for CPU {
+    fn mem_read(&self, addr: u16) -> u8 {
+        self.memory[addr as usize]
+    }
+
+    fn mem_write(&mut self, addr: u16, data: u8) {
+        self.memory[addr as usize] = data;
+    }
+}
+
+
+
+
 impl CPU {
     pub fn new() -> Self {
         CPU {
@@ -87,24 +119,33 @@ impl CPU {
     }
 
     pub fn load(&mut self, program: Vec<u8>) {
-        self.memory[0x8000..(0x8000 + program.len())].copy_from_slice(&program[..]);
+        self.memory[0x0600..(0x0600 + program.len())].copy_from_slice(&program[..]);
         self.mem_write_u16(0xFFFC, 0x8000);
     }
 
-    pub fn run(&mut self) {
+    pub fn run(&mut self){
+        self.run_with_callback(|_| {});
+    }
+
+
+    pub fn run_with_callback<F>(&mut self, mut callback: F)
+    where 
+        F: FnMut(&mut CPU),
+         {
         let ref opcodes:HashMap<u8, &'static opcodes::OpCode> = *opcodes::OPCODES_MAP;
 
         loop {
-            
+            callback(self);
             let code = self.mem_read(self.program_counter);
 
             self.program_counter += 1;
             let opcode = opcodes.get(&code).expect(&format!("{:x} was not recognized", code));
             match code {
 
-                0x69 | 0x65 | 0x75 | 0x6D | 0x7D | 0x79 | 0x61 | 0x71 => self.adc(),
+                0x69 | 0x65 | 0x75 | 0x6D | 0x7D | 0x79 | 0x61 | 0x71 => self.adc(&opcode.mode),
 
                 0x29 | 0x25 | 0x35 | 0x2D | 0x3D | 0x39 | 0x21 | 0x31 => self.and(&opcode.mode),
+
                 0x0a => self.asl_acc(),
 
                 0x06 | 0x16 | 0x0E | 0x1E => {self.asl(&opcode.mode);},
@@ -168,9 +209,6 @@ impl CPU {
                     self.program_counter = mem_addr;
                 }
 
-
-                
-
                 0xa9 | 0xa5 | 0xb5 | 0xad | 0xbd | 0xb9 | 0xa1 | 0xb1 => {
                     self.lda(&opcode.mode);
                 }
@@ -180,7 +218,7 @@ impl CPU {
 
                 //lsr accumulator
                 0x4a =>{
-                    let mut data = self.register_a;
+                    let data = self.register_a;
                     if data & 1 == 1{
                         self.sec();
                     }else{
@@ -205,8 +243,20 @@ impl CPU {
                 0x68 => self.pla(),
                 0x28 => self.plp(),
 
+                0x2a => self.rol_accumulator(),
 
+                0x26 | 0x36 | 0x2e | 0x3e => self.rol(&opcode.mode),
 
+                0x6a => self.ror_accumulator(),
+
+                0x66 | 0x76 | 0x6e | 0x7e => self.ror(&opcode.mode),
+
+                0x40 => self.rti(),
+
+                0x60 => self.rts(),
+
+                0xe9 | 0xe5 | 0xf5 | 0xed | 0xfd | 0xf9 | 0xe1 | 0xf1 => self.sbc(&opcode.mode),
+                    
                 0x38 => self.sec(),
                 0xF8 => self.sed(),
                 0x78 => self.sei(),
@@ -236,8 +286,34 @@ impl CPU {
         }
     }
 
-    fn adc(&mut self){//
-        todo!()
+    fn adc(&mut self, mode: &AddressingMode){
+        let addr = self.get_operand_addresses(mode);
+        let val = self.mem_read(addr);
+
+        self.add_to_register_a(val);
+        
+    }
+
+    fn add_to_register_a(&mut self, val:u8){
+
+        
+        let sum = self.register_a as u16 + val as u16 + (if self.status.contains(CpuFlags::CARRY){1} else{0}) as u16;
+        if sum > 0xff{
+            self.status.insert(CpuFlags::CARRY)
+        }else{
+            self.status.remove(CpuFlags::CARRY);
+        }
+        let result = sum as u8;
+        
+        if (val ^ result) & (result ^ self.register_a) & 0x80 != 0 {
+            self.status.insert(CpuFlags::OVERFLOW);
+        } else {
+            self.status.remove(CpuFlags::OVERFLOW)
+        }
+
+        self.register_a = result;
+        self.update_zeros_and_negative_flags(result);
+
     }
 
     fn and(&mut self, mode: &AddressingMode){
@@ -474,7 +550,7 @@ impl CPU {
 
     }
     fn rti(&mut self){
-        self.status = self.stack_pop();
+        self.status = CpuFlags::from_bits_truncate(self.stack_pop());
         self.status.remove(CpuFlags::BREAK);
         self.status.remove(CpuFlags::BREAK2);
         self.program_counter = self.stack_pop_u16();
@@ -483,10 +559,14 @@ impl CPU {
     fn rts(&mut self){
         self.program_counter = self.stack_pop_u16() + 1; 
     }
-    // TODO: adicionar instrucoes no switch
+    
 
-    fn sbc(&mut self){
-        todo!();
+    fn sbc(&mut self, mode: &AddressingMode){
+        let addr = self.get_operand_addresses(mode);
+        let val = self.mem_read(addr);
+
+        self.add_to_register_a( (val as i8).wrapping_neg().wrapping_sub(1) as u8);
+        
     }
 
     fn sec(&mut self){
@@ -542,12 +622,6 @@ impl CPU {
         self.update_zeros_and_negative_flags(self.register_a);
     }
 
-    fn mem_read_u16(&self, pos: u16) -> u16 {
-        let lo = self.mem_read(pos) as u16;
-        let hi = self.mem_read(pos + 1) as u16;
-        (hi << 8) | (lo as u16)
-    }
-
     fn branch(&mut self, condition:bool){
         if condition {
             let jump = self.mem_read(self.program_counter) as i8;
@@ -575,21 +649,6 @@ impl CPU {
         let value = self.mem_read(addr);
         self.register_y = value;
         self.update_zeros_and_negative_flags(self.register_y);
-    }
-
-    fn mem_write_u16(&mut self, pos: u16, data: u16) {
-        let hi = (data >> 8) as u8;
-        let lo = (data & 0xff) as u8;
-        self.mem_write(pos, lo);
-        self.mem_write(pos + 1, hi);
-    }
-
-    fn mem_read(&self, addr: u16) -> u8 {
-        self.memory[addr as usize]
-    }
-
-    fn mem_write(&mut self, addr: u16, data: u8) {
-        self.memory[addr as usize] = data;
     }
 
     fn update_zeros_and_negative_flags(&mut self, result: u8) {
