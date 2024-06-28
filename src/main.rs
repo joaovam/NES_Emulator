@@ -1,4 +1,6 @@
 use cpu::CPU;
+use cpu::Mem;
+use rand::Rng;
 use sdl2::event::Event;
 use sdl2::sys::KeyCode;
 use sdl2::EventPump;
@@ -58,13 +60,42 @@ fn main() {
     let mut cpu = CPU::new();
 
     cpu.load(game_code);
+    cpu.reset();
+
+    let mut screen_state = [0 as u8; 32 * 3 * 32];
+    let mut rng = rand::thread_rng();
+
+    
     cpu.run_with_callback(move |cpu|{
-        //read user input
-        // update mem [0xFE] with Rand Num
-        //read mem mapperd screen state
-        //render screen state
+        handle_user_input(cpu, &mut event_pump);
+        cpu.mem_write(0xfe, rng.gen_range(1, 16));
+        
+        if read_screen_state(cpu, &mut screen_state){
+            texture.update(None, &screen_state, 32*3).unwrap();
+            canvas.present();
+        }
+        ::std::thread::sleep(std::time::Duration::new(0, 70_000));
     });
-    println!("Hello, world!");
+
+}
+
+fn read_screen_state(cpu: &CPU, frame : &mut [u8;32*3*32]) -> bool{
+    let mut frame_idx = 0;
+    let mut update = false;
+
+    for i in 0x0200..0x600{
+        let color_idx = cpu.mem_read(i as u16);
+        let (b1, b2, b3) = color(color_idx).rgb();
+
+        if frame[frame_idx] != b1 || frame[frame_idx+1] != b1 || frame[frame_idx + 2] != b3{
+            frame[frame_idx] = b1;
+            frame[frame_idx + 1] = b2;
+            frame[frame_idx + 2] = b3;
+            update = true;
+        }
+        frame_idx += 3;
+    }
+    update
 }
 
 
