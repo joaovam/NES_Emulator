@@ -2,6 +2,7 @@
 use std::{collections::HashMap};
 
 use crate::opcodes;
+use crate::bus::Bus;
 
 
 bitflags! {
@@ -39,7 +40,8 @@ pub struct CPU {
     pub stack_pointer: u8,
     pub status: CpuFlags,
     pub program_counter: u16,
-    memory: [u8; 0xFFFF],
+    pub bus: Bus,
+
 }
 
 #[derive(Debug)]
@@ -78,11 +80,20 @@ pub trait Mem {
 
 impl Mem for CPU {
     fn mem_read(&self, addr: u16) -> u8 {
-        self.memory[addr as usize]
+        self.bus.mem_read(addr)
     }
 
     fn mem_write(&mut self, addr: u16, data: u8) {
-        self.memory[addr as usize] = data;
+        self.bus.mem_write(addr, data)
+    }
+
+    fn mem_read_u16(&self, pos: u16) -> u16 {
+        self.bus.mem_read_u16(pos)
+    }
+
+    fn mem_write_u16(&mut self, pos: u16, data: u16) {
+        
+        self.bus.mem_write_u16(pos, data);
     }
 }
 
@@ -98,7 +109,7 @@ impl CPU {
             stack_pointer: STACK_RESET,
             status: CpuFlags::from_bits_truncate(0b100100),
             program_counter: 0,
-            memory: [0; 0xFFFF],
+            bus: Bus::new(),
         }
     }
 
