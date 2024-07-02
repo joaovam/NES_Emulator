@@ -135,7 +135,7 @@ impl CPU {
         let ref opcodes:HashMap<u8, &'static opcodes::OpCode> = *opcodes::OPCODES_MAP;
 
         loop {
-            callback(self);
+            
             let code = self.mem_read(self.program_counter);
 
             self.program_counter += 1;
@@ -161,6 +161,7 @@ impl CPU {
                 0x24 | 0x2c => self.bit(&opcode.mode),
 
                 0x30 => self.branch(self.status.contains(CpuFlags::NEGATIVE)),
+                0x10 => self.branch(!self.status.contains(CpuFlags::NEGATIVE)),
                 0xD0 => self.branch(!self.status.contains(CpuFlags::ZERO)),
                 0x50 => self.branch(!self.status.contains(CpuFlags::OVERFLOW)),
                 0x70 => self.branch(self.status.contains(CpuFlags::OVERFLOW)),
@@ -688,7 +689,7 @@ impl CPU {
     }
     fn stack_pop(&mut self) -> u8{
         
-        self.stack_pointer.wrapping_add(1);
+        self.stack_pointer = self.stack_pointer.wrapping_add(1);
         self.mem_read((STACK as u16) + self.stack_pointer as u16)
     }
 

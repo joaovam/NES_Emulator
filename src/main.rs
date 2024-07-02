@@ -16,9 +16,22 @@ extern crate lazy_static;
 #[macro_use]
 extern crate bitflags;
 
+fn color(byte:u8) -> Color{
+    match byte{
+        0 => sdl2::pixels::Color::BLACK,
+        1 => sdl2::pixels::Color::WHITE,
+        2 | 9 => sdl2::pixels::Color::GREY,
+        3 | 10 => sdl2::pixels::Color::RED,
+        4 | 11 => sdl2::pixels::Color::GREEN,
+        5 | 12 => sdl2::pixels::Color::BLUE,
+        6 | 13 => sdl2::pixels::Color::MAGENTA,
+        7 | 14 => sdl2::pixels::Color::YELLOW,
+        _ => sdl2::pixels::Color::CYAN,
+    }
+}
+
 fn main() {
-    let  game_code = vec![
-    0x20, 0x06, 0x06, 0x20, 0x38, 0x06, 0x20, 0x0d, 0x06, 0x20, 0x2a, 0x06, 0x60, 0xa9, 0x02, 0x85,
+    let  game_code = vec![0x20, 0x06, 0x06, 0x20, 0x38, 0x06, 0x20, 0x0d, 0x06, 0x20, 0x2a, 0x06, 0x60, 0xa9, 0x02, 0x85,
     0x02, 0xa9, 0x04, 0x85, 0x03, 0xa9, 0x11, 0x85, 0x10, 0xa9, 0x10, 0x85, 0x12, 0xa9, 0x0f, 0x85,
     0x14, 0xa9, 0x04, 0x85, 0x11, 0x85, 0x13, 0x85, 0x15, 0x60, 0xa5, 0xfe, 0x85, 0x00, 0xa5, 0xfe,
     0x29, 0x03, 0x18, 0x69, 0x02, 0x85, 0x01, 0x60, 0x20, 0x4d, 0x06, 0x20, 0x8d, 0x06, 0x20, 0xc3,
@@ -72,6 +85,7 @@ fn main() {
         
         if read_screen_state(cpu, &mut screen_state){
             texture.update(None, &screen_state, 32*3).unwrap();
+            canvas.copy(&texture, None, None).unwrap();
             canvas.present();
         }
         ::std::thread::sleep(std::time::Duration::new(0, 70_000));
@@ -87,7 +101,7 @@ fn read_screen_state(cpu: &CPU, frame : &mut [u8;32*3*32]) -> bool{
         let color_idx = cpu.mem_read(i as u16);
         let (b1, b2, b3) = color(color_idx).rgb();
 
-        if frame[frame_idx] != b1 || frame[frame_idx+1] != b1 || frame[frame_idx + 2] != b3{
+        if frame[frame_idx] != b1 || frame[frame_idx+1] != b2 || frame[frame_idx + 2] != b3{
             frame[frame_idx] = b1;
             frame[frame_idx + 1] = b2;
             frame[frame_idx + 2] = b3;
@@ -127,18 +141,6 @@ fn handle_user_input(cpu: &mut CPU, event_pump: &mut EventPump){
     }
 }
 
-fn color(byte:u8) -> Color{
-    match byte{
-        0 => sdl2::pixels::Color::BLACK,
-        1 => sdl2::pixels::Color::WHITE,
-        2 | 9 => sdl2::pixels::Color::GREY,
-        3 | 10 => sdl2::pixels::Color::RED,
-        4 | 11 => sdl2::pixels::Color::GREEN,
-        5 | 12 => sdl2::pixels::Color::BLUE,
-        6 | 13 => sdl2::pixels::Color::MAGENTA,
-        7 | 14 => sdl2::pixels::Color::YELLOW,
-        _ => sdl2::pixels::Color::CYAN,
-    }
-}
+
 
 
