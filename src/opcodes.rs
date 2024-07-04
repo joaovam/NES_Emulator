@@ -1,20 +1,18 @@
-
 use std::collections::HashMap;
 
 use crate::cpu::AddressingMode;
 
-pub struct OpCode{
-    pub code:u8,
+pub struct OpCode {
+    pub code: u8,
     pub mnemonic: &'static str,
     pub len: u8,
     pub cycles: u8,
     pub mode: AddressingMode,
-
 }
 
-impl OpCode{
-    fn new(code:u8, mnemonic:&'static str, len:u8, cycles:u8, mode: AddressingMode) -> OpCode{
-        OpCode{
+impl OpCode {
+    fn new(code: u8, mnemonic: &'static str, len: u8, cycles: u8, mode: AddressingMode) -> OpCode {
+        OpCode {
             code,
             mnemonic,
             len,
@@ -221,7 +219,7 @@ lazy_static! {
         OpCode::new(0x28, "PLP", 1, 4, AddressingMode::NoneAddressing),
 
     ];
-    
+
 
     pub static ref OPCODES_MAP: HashMap<u8, &'static OpCode> = {
         let mut map = HashMap::new();
