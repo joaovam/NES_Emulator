@@ -49,7 +49,7 @@ pub fn trace(cpu: &mut CPU) -> String{
                 AddressingMode::ZeroPage_Y => format!("${:02x},Y @ {:02x} = {:02x}", 
                 addr, mem_addr, stored_value),
 
-                AddressingMode::Indirect_X => format!("(${:02x}, X) @ {:02x} = {:04x} = {:02x}",
+                AddressingMode::Indirect_X => format!("(${:02x},X) @ {:02x} = {:04x} = {:02x}",
                 addr, (addr.wrapping_add(cpu.register_x)), mem_addr, stored_value),
 
                 AddressingMode::Indirect_Y => format!("(${:02x}),Y = {:04x} @ {:04x} = {:02x}",
