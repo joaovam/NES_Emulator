@@ -57,11 +57,11 @@ pub enum AddressingMode {
 }
 
 pub trait Mem {
-    fn mem_read(&self, addr: u16) -> u8;
+    fn mem_read(&mut self, addr: u16) -> u8;
 
     fn mem_write(&mut self, addr: u16, data: u8);
 
-    fn mem_read_u16(&self, pos: u16) -> u16 {
+    fn mem_read_u16(&mut self, pos: u16) -> u16 {
         let lo = self.mem_read(pos) as u16;
         let hi = self.mem_read(pos + 1) as u16;
         (hi << 8) | (lo as u16)
@@ -76,7 +76,7 @@ pub trait Mem {
 }
 
 impl Mem for CPU {
-    fn mem_read(&self, addr: u16) -> u8 {
+    fn mem_read(&mut self, addr: u16) -> u8 {
         self.bus.mem_read(addr)
     }
 
@@ -84,7 +84,7 @@ impl Mem for CPU {
         self.bus.mem_write(addr, data)
     }
 
-    fn mem_read_u16(&self, pos: u16) -> u16 {
+    fn mem_read_u16(&mut self, pos: u16) -> u16 {
         self.bus.mem_read_u16(pos)
     }
 
@@ -545,7 +545,7 @@ impl CPU {
     fn and(&mut self, mode: &AddressingMode) {
         let addr = self.get_operand_addresses(mode);
         let value = self.mem_read(addr);
-        eprintln!("value: {:02x} & A: {:02x} = {:02x}",value, self.register_a, value & self.register_a);
+        
 
         self.register_a = value & self.register_a;
         self.update_zeros_and_negative_flags(self.register_a);
@@ -913,7 +913,6 @@ impl CPU {
         self.stack_pointer = self.stack_pointer.wrapping_add(1);
         
         let x = self.mem_read((STACK as u16) + self.stack_pointer as u16);
-        eprintln!("Reading: {:02x}", x);
         x
     }
 
@@ -930,7 +929,7 @@ impl CPU {
         hi << 8 | lo
     }
 
-    pub fn get_absolute_address(&self, mode: &AddressingMode, addr: u16) -> u16 {
+    pub fn get_absolute_address(&mut self, mode: &AddressingMode, addr: u16) -> u16 {
         match mode {
             AddressingMode::ZeroPage => self.mem_read(addr) as u16,
 
@@ -982,7 +981,7 @@ impl CPU {
         }
     }
 
-    fn get_operand_addresses(&self, mode: &AddressingMode) -> u16 {
+    fn get_operand_addresses(&mut self, mode: &AddressingMode) -> u16 {
         match mode {
             AddressingMode::Immediate => self.program_counter,
             _ => self.get_absolute_address(mode, self.program_counter),

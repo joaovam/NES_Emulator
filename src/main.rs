@@ -10,7 +10,9 @@ use sdl2::pixels::PixelFormatEnum;
 use sdl2::EventPump;
 use trace::trace;
 
+
 pub mod bus;
+pub mod ppu;
 pub mod cartridge;
 pub mod cpu;
 pub mod opcodes;
@@ -83,7 +85,7 @@ fn main() {
     });
 }
 
-fn read_screen_state(cpu: &CPU, frame: &mut [u8; 32 * 3 * 32]) -> bool {
+fn read_screen_state(cpu: &mut CPU, frame: &mut [u8; 32 * 3 * 32]) -> bool {
     let mut frame_idx = 0;
     let mut update = false;
 
