@@ -34,6 +34,9 @@ pub struct NesPPU{
     pub oam_addr:u8,
     pub oam_data: [u8;256],
     internal_data_buf: u8,
+
+    scanline: u16,
+    cycles: usize,
     
 }
 
@@ -58,8 +61,32 @@ impl NesPPU{
             addr: AddrRegister::new(),
             oam_addr: 0,
             internal_data_buf: 0,
+            scanline: 0,
+            cycles: 0,
             
         }
+    }
+
+    pub fn tick(&mut self, cycles:u8)-> bool{
+        self.cycles += cycles as usize;
+
+        if self.cycles >= 341{
+            self.cycles = self.cycles - 341;
+            self.scanline += 1;
+
+            if self.scanline == 241{
+                if self.ctrl.generate_vblank_nmi(){
+                    self.status.set_vblank_status(true);
+                    todo!("Should trigger NMI interrupt")
+                }
+            }
+            if self.scanline >= 262{
+                self.scanline = 0;
+                self.status.reset_vblank_status();
+                return true;
+            }
+        }
+        return false;
     }
 
     fn mirror_vram_addr(&self, addr:u16) -> u16{
