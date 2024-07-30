@@ -37,6 +37,7 @@ pub struct NesPPU{
 
     scanline: u16,
     cycles: usize,
+    pub nmi_interrupt: Option<u8>,
     
 }
 
@@ -63,6 +64,7 @@ impl NesPPU{
             internal_data_buf: 0,
             scanline: 0,
             cycles: 0,
+            nmi_interrupt:None,
             
         }
     }
@@ -77,16 +79,21 @@ impl NesPPU{
             if self.scanline == 241{
                 if self.ctrl.generate_vblank_nmi(){
                     self.status.set_vblank_status(true);
-                    todo!("Should trigger NMI interrupt")
+                    self.nmi_interrupt = Some(1);
                 }
             }
             if self.scanline >= 262{
                 self.scanline = 0;
+                self.nmi_interrupt = None;
+                self.status.set_sprite_zero_hit(false);
                 self.status.reset_vblank_status();
                 return true;
             }
         }
         return false;
+    }
+    fn poll_nmi_interrupt(&mut self) -> Option<u8>{
+        self.nmi_interrupt.take()
     }
 
     fn mirror_vram_addr(&self, addr:u16) -> u16{
@@ -109,7 +116,11 @@ impl NesPPU{
 
 impl PPU for NesPPU{
     fn write_to_ctrl(&mut self, value: u8){
+        let before_nmi_status = self.ctrl.generate_vblank_nmi();
         self.ctrl.update(value);
+        if !before_nmi_status && self.ctrl.generate_vblank_nmi() && self.status.is_in_vblank(){
+            self.nmi_interrupt = Some(1);
+        }
     }
 
     fn write_to_ppu_addr(&mut self, value: u8){

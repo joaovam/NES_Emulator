@@ -97,6 +97,27 @@ impl Mem for CPU {
     }
 }
 
+mod interrupt{
+    #[derive(PartialEq, Eq)]
+    pub enum InterruptType {
+        NMI,
+    }
+
+    #[derive(PartialEq, Eq)]
+    pub(super) struct Interrupt{
+        pub(super) itype: InterruptType,
+        pub(super) vector_addr: u16,
+        pub(super) b_flag_mask: u8,
+        pub(super) cpu_cycles: u8,
+    }
+    pub(super) const NMI: Interrupt = Interrupt {
+        itype: InterruptType::NMI,
+        vector_addr: 0xfffA,
+        b_flag_mask: 0b00100000,
+        cpu_cycles: 2,
+    };
+}
+
 impl CPU {
     pub fn new(bus: Bus) -> Self {
         CPU {
@@ -137,6 +158,20 @@ impl CPU {
         self.run_with_callback(|_| {});
     }
 
+    fn interrupt(&mut self, interrupt: interrupt::Interrupt){
+        self.stack_push_u16(self.program_counter);
+        let mut flag = self.status.clone();
+
+        flag.set(CpuFlags::BREAK, interrupt.b_flag_mask & 0b010000 == 1);
+        flag.set(CpuFlags::BREAK2, interrupt.b_flag_mask & 0b100000 == 1);
+
+        self.stack_push(flag.bits);
+        self.status.insert(CpuFlags::INTERRUPT_DISABLE);
+
+        self.bus.tick(interrupt.cpu_cycles);
+        self.program_counter = self.mem_read_u16(interrupt.vector_addr);
+    }
+
     pub fn run_with_callback<F>(&mut self, mut callback: F)
     where
         F: FnMut(&mut CPU),
@@ -144,6 +179,10 @@ impl CPU {
         let ref opcodes: HashMap<u8, &'static opcodes::OpCode> = *opcodes::OPCODES_MAP;
 
         loop {
+            if let Some(_nmi) = self.bus.poll_nmi_status(){
+                self.interrupt(interrupt::NMI);
+            }
+
             callback(self);
 
             let code = self.mem_read(self.program_counter);

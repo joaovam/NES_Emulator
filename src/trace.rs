@@ -21,7 +21,7 @@ pub fn trace(cpu: &mut CPU) -> String{
             (0,0)
         }
         _ =>{
-            let addr = cpu.get_absolute_address(&ops.mode, pc + 1);
+            let (addr, _) = cpu.get_absolute_address(&ops.mode, pc + 1);
             (addr, cpu.mem_read(addr))
 
         }
