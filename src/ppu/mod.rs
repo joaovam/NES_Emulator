@@ -92,7 +92,7 @@ impl NesPPU{
         }
         return false;
     }
-    fn poll_nmi_interrupt(&mut self) -> Option<u8>{
+    pub fn poll_nmi_interrupt(&mut self) -> Option<u8>{
         self.nmi_interrupt.take()
     }
 
