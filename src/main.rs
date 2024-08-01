@@ -10,15 +10,12 @@ use bus::Bus;
 use cartridge::Rom;
 use cpu::Mem;
 use cpu::CPU;
-use trace::trace;
 use render::frame::Frame;
-use render::palette;
 use ppu::NesPPU;
 // use rand::Rng;
 
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
-use sdl2::pixels::Color;
 use sdl2::pixels::PixelFormatEnum;
 use sdl2::EventPump;
 // use std::time::Duration;
@@ -94,12 +91,14 @@ fn main() {
 
     // run the game cycle
     let bus = Bus::new(rom, move |ppu: &NesPPU| {
+        
         render::render(ppu, &mut frame);
         texture.update(None, &frame.data, 256 * 3).unwrap();
 
         canvas.copy(&texture, None, None).unwrap();
 
         canvas.present();
+        
         for event in event_pump.poll_iter() {
             match event {
               Event::Quit { .. }

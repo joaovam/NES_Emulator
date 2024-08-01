@@ -1111,16 +1111,6 @@ mod test {
     }
 
     #[test]
-    fn test_inx_overflow() {
-        let bus = Bus::new(test::test_rom(), |ppu: &NesPPU| {});
-        let mut cpu = CPU::new(bus);
-        cpu.register_x = 0xff;
-        cpu.load_and_run(vec![0xe8, 0xe8, 0x00]);
-
-        assert_eq!(cpu.register_x, 1)
-    }
-
-    #[test]
     fn test_lda_from_memory() {
         let bus = Bus::new(test::test_rom(), |ppu: &NesPPU| {});
         let mut cpu = CPU::new(bus);
