@@ -1,8 +1,6 @@
 pub mod frame;
 pub mod palette;
 
-use std::collections::btree_map::Values;
-
 use crate::ppu::NesPPU;
 use frame::Frame;
 

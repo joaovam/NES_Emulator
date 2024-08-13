@@ -84,7 +84,7 @@ fn main() {
         .unwrap();
 
     //load the game
-    let bytes: Vec<u8> = std::fs::read("games/Alter_Ego.nes").unwrap();
+    let bytes: Vec<u8> = std::fs::read("games/Pac-Man.nes").unwrap();
     let rom = Rom::new(&bytes).unwrap();
 
     let mut frame = Frame::new();

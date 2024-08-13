@@ -56,7 +56,7 @@ impl ControlRegister{
     pub fn sprt_pattern_addr(&self)->u16{
         //(0: $0000; 1: $1000; ignored in 8x16 mode)
 
-        if self.contains(ControlRegister::SPRITE_PATTERN_ADDR){
+        if !self.contains(ControlRegister::SPRITE_PATTERN_ADDR){
             0x0
         }else{
             0x1000
@@ -65,7 +65,7 @@ impl ControlRegister{
     }
 
     pub fn bknd_pattern_addr(&self)-> u16{
-        if self.contains(ControlRegister::BACKROUND_PATTERN_ADDR){
+        if !self.contains(ControlRegister::BACKROUND_PATTERN_ADDR){
             0x0
         }else{
             0x1000
