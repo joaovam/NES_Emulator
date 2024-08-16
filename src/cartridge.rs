@@ -1,9 +1,8 @@
-const NES_TAG: [u8; 4] = [0x4e, 0x45, 0x53, 0x1a];
+const NES_TAG: [u8; 4] = [0x4E, 0x45, 0x53, 0x1A];
 const PRG_ROM_PAGE_SIZE: usize = 16384;
 const CHR_ROM_PAGE_SIZE: usize = 8192;
 
-#[derive(Debug, PartialEq)]
-#[allow(non_camel_case_types)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Mirroring {
     VERTICAL,
     HORIZONTAL,
@@ -22,10 +21,10 @@ impl Rom {
         if &raw[0..4] != NES_TAG {
             return Err("File is not in iNES file format".to_string());
         }
+
         let mapper = (raw[7] & 0b1111_0000) | (raw[6] >> 4);
 
         let ines_ver = (raw[7] >> 2) & 0b11;
-
         if ines_ver != 0 {
             return Err("NES2.0 format is not supported".to_string());
         }
