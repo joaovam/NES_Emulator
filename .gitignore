@@ -17,4 +17,5 @@ Cargo.lock
 # Added by cargo
 
 /target
-games
+/nes_games
+/games
